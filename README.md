@@ -26,7 +26,7 @@ Modern data serialization formats (JSON, YAML, XML) carry massive historical bal
 ## Core Principles
 
 1. **Zero Syntax Overhead:** Only semantic data and explicit prefix markers exist. Whitespace within identifiers is strictly prohibited (use `_`).
-2. **Deterministic Single-Pass Parsing ($O(N)$):** Evaluated strictly line-by-line using a lightweight state machine. No lookaheads, no backtrack buffers, no bracket-balancing.
+2. **Deterministic Single-Pass Parsing (**O(N)**):** Evaluated strictly line-by-line using a lightweight state machine. No lookaheads, no backtrack buffers, no bracket-balancing.
 3. **Cascading State Inheritance:** Attributes defined at a higher node automatically cascade down through all subsequent child nodes until the context is explicitly reset by a new root entity.
 4. **Visual Depth Indexing:** Structural hierarchy is declared at index `0` of each line. 
 
