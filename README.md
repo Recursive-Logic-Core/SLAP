@@ -27,7 +27,7 @@ Modern data serialization formats (JSON, YAML, XML) carry massive historical bal
 
 1. **Zero Syntax Overhead:** Only semantic data and explicit prefix markers exist. Whitespace within identifiers is strictly prohibited (use `_`).
 2. **Deterministic Single-Pass Parsing (**O(N)**):** Evaluated strictly line-by-line using a lightweight state machine. No lookaheads, no backtrack buffers, no bracket-balancing.
-3. **Cascading State Inheritance:** Attributes defined at a higher node automatically cascade down through all subsequent child nodes until the context is explicitly reset by a new root entity.
+3. **Cascading State Inheritance & Dynamic Scope:** Attributes defined at depth $N$ attach to the active node at that depth and automatically cascade down into all subsequent child nodes declared *after* them. Prior siblings remain immutable.
 4. **Visual Depth Indexing:** Structural hierarchy is declared at index `0` of each line. 
 
 ---
@@ -39,8 +39,10 @@ Modern data serialization formats (JSON, YAML, XML) carry massive historical bal
 * Each additional `-` increases the hierarchical depth level ($N+1$).
 
 ### 2. Attributes & States (`.`, `..`, `...`)
-* `.` declares a globally inherited attribute for the current root branch.
-* `..` declares a localized attribute bound strictly to the preceding sub-node.
+* Prefix count corresponds to the target hierarchical depth level:
+  * `.` binds to the active root node (depth 1) and cascades to all following descendants.
+  * `..` binds to the active depth-2 sub-node and cascades to its subsequent children.
+* **Lexical Downstream Flow:** Attributes apply dynamically to their parent scope and downstream siblings/children instantiated *after* the attribute declaration.
 * Key-value pairs are delimited by a single colon (`:`).
 
 ---
@@ -55,8 +57,7 @@ Modern data serialization formats (JSON, YAML, XML) carry massive historical bal
 --node_01
 --node_02
 ..role:backup
--cluster_beta
-.zone:us_east
+.maintenance:true
 --node_03
 ```
 
@@ -66,15 +67,25 @@ Modern data serialization formats (JSON, YAML, XML) carry massive historical bal
   "cluster_alpha": {
     "zone": "eu_central",
     "security": "strict",
+    "maintenance": "true",
     "nodes": [
-      { "id": "node_01", "zone": "eu_central", "security": "strict" },
-      { "id": "node_02", "zone": "eu_central", "security": "strict", "role": "backup" }
-    ]
-  },
-  "cluster_beta": {
-    "zone": "us_east",
-    "nodes": [
-      { "id": "node_03", "zone": "us_east" }
+      { 
+        "id": "node_01", 
+        "zone": "eu_central", 
+        "security": "strict" 
+      },
+      { 
+        "id": "node_02", 
+        "zone": "eu_central", 
+        "security": "strict", 
+        "role": "backup" 
+      },
+      { 
+        "id": "node_03", 
+        "zone": "eu_central", 
+        "security": "strict", 
+        "maintenance": "true" 
+      }
     ]
   }
 }
@@ -97,14 +108,13 @@ raw_slap_data = """
 --beta
 --gamma
 ..role:worker
--delta
-.status:idle
---epsilon
+.maintenance:true
+--delta
 """
 
 nodes = parse_slap(raw_slap_data)
 for node in nodes:
-    print(f"Path: {node['path']} | Attributes: {node['attributes']}")
+  print(f"Path: {node['path']} | Attributes: {node['attributes']}")
 ```
 
 ---
