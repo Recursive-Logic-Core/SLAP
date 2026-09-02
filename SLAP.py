@@ -3,121 +3,128 @@ SLAP Reference Parser (Structural Line Algorithm Path)
 Deterministic, linear state & context deserialization.
 """
 
-from typing import List, Dict, Any, Tuple, Optional
 import json
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class SLAPParser:
-    def __init__(self):
-        self.node_stack: List[str] = []
-        self.attr_stack: List[Dict[str, str]] = []
-        self.nodes: List[Dict[str, Any]] = []
 
-    def _count_prefix(self, line: str, char: str) -> int:
-        count = 0
-        for c in line:
-            if c == char:
-                count += 1
-            else:
-                break
-        return count
+  def __init__(self):
+    self.node_stack: List[str] = []
+    self.attr_stack: List[Dict[str, str]] = []
+    # Map, um Knoten nach ihrem Pfad direkt im Speicher zu manipulieren
+    self.node_lookup: Dict[str, Dict[str, Any]] = []
+    self.nodes: List[Dict[str, Any]] = []
 
-    def _parse_line(self, raw_line: str) -> Optional[Tuple[str, int, str]]:
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            return None
+  def _count_prefix(self, line: str, char: str) -> int:
+    count = 0
+    for c in line:
+      if c == char:
+        count += 1
+      else:
+        break
+    return count
 
-        if line.startswith("-"):
-            depth = self._count_prefix(line, "-")
-            payload = line[depth:].strip()
-            return ("node", depth, payload)
+  def _parse_line(self, raw_line: str) -> Optional[Tuple[str, int, str]]:
+    line = raw_line.strip()
+    if not line or line.startswith('#'):
+      return None
 
-        elif line.startswith("."):
-            depth = self._count_prefix(line, ".")
-            payload = line[depth:].strip()
-            return ("attr", depth, payload)
+    if line.startswith('-'):
+      depth = self._count_prefix(line, '-')
+      return ('node', depth, line[depth:].strip())
 
-        return None
+    elif line.startswith('.'):
+      depth = self._count_prefix(line, '.')
+      return ('attr', depth, line[depth:].strip())
 
-    def parse(self, text: str) -> List[Dict[str, Any]]:
-        self.node_stack = []
-        self.attr_stack = []
-        self.nodes = []
+    return None
 
-        lines = text.splitlines()
+  def parse(self, text: str) -> List[Dict[str, Any]]:
+    self.node_stack = []
+    self.attr_stack = []
+    self.nodes = []
+    self.node_lookup = {}
 
-        for raw_line in lines:
-            token = self._parse_line(raw_line)
-            if not token:
-                continue
+    lines = text.splitlines()
 
-            token_type, depth, payload = token
+    for raw_line in lines:
+      token = self._parse_line(raw_line)
+      if not token:
+        continue
 
-            if token_type == "node":
-                # Stack auf aktuelle Tiefe anpassen (Knoten-Hierarchie)
-                while len(self.node_stack) >= depth:
-                    self.node_stack.pop()
-                    self.attr_stack.pop()
+      token_type, depth, payload = token
 
-                # Neuen Knoten auf den Stack legen
-                self.node_stack.append(payload)
+      if token_type == 'node':
+        # Stack kürzen, falls wir auf gleicher oder höherer Ebene sind
+        while len(self.node_stack) >= depth:
+          self.node_stack.pop()
+          self.attr_stack.pop()
 
-                # Geerbte Attribute von übergeordneten Ebenen sammeln
-                inherited_attrs: Dict[str, str] = {}
-                for attr_level in self.attr_stack:
-                    inherited_attrs.update(attr_level)
+        self.node_stack.append(payload)
 
-                # Lokalen Attribut-Speicher für diese Ebene anlegen
-                self.attr_stack.append({})
+        # 1. Alle bisher aktiven Attribute von Ebene 0 bis depth-1 erben
+        inherited_attrs: Dict[str, str] = {}
+        for level_attrs in self.attr_stack:
+          inherited_attrs.update(level_attrs)
 
-                # Pfad und Knoten-Objekt registrieren
-                current_path = "/" + "/".join(self.node_stack)
-                parent_path = "/" + "/".join(self.node_stack[:-1]) if len(self.node_stack) > 1 else None
+        # 2. Lokalen Speicher für diese Tiefe initialisieren
+        self.attr_stack.append({})
 
-                node_record = {
-                    "id": payload,
-                    "depth": depth,
-                    "path": current_path,
-                    "parent": parent_path,
-                    "attributes": inherited_attrs,
-                }
-                self.nodes.append(node_record)
+        current_path = '/' + '/'.join(self.node_stack)
+        parent_path = (
+            '/' + '/'.join(self.node_stack[:-1])
+            if len(self.node_stack) > 1
+            else None
+        )
 
-            elif token_type == "attr":
-                if ":" not in payload:
-                    continue
-                key, value = payload.split(":", 1)
-                key, value = key.strip(), value.strip()
+        node_record = {
+            'id': payload,
+            'depth': depth,
+            'path': current_path,
+            'parent': parent_path,
+            'attributes': inherited_attrs,
+        }
+        self.nodes.append(node_record)
+        self.node_lookup[current_path] = node_record
 
-                # Attribut auf der entsprechenden Stack-Ebene verankern
-                target_level = depth - 1
-                if 0 <= target_level < len(self.attr_stack):
-                    self.attr_stack[target_level][key] = value
+      elif token_type == 'attr':
+        if ':' not in payload:
+          continue
+        key, value = payload.split(':', 1)
+        key, value = key.strip(), value.strip()
 
-                    # Direkt im aktuellen Knoten der Ebene aktualisieren
-                    if self.nodes and self.nodes[-1]["depth"] == depth:
-                        self.nodes[-1]["attributes"][key] = value
+        target_level = depth - 1
 
-        return self.nodes
+        # Wenn wir von Unterknoten (z. B. Tiefe 2) zurück zu einem Attribut auf Tiefe 1 springen,
+        # poppen wir den Stack wieder auf Tiefe 1 zurück.
+        while len(self.node_stack) > depth:
+          self.node_stack.pop()
+          self.attr_stack.pop()
+
+        if 0 <= target_level < len(self.attr_stack):
+          # Attribut für zukünftige Knoten auf diesem Level & darunter scharfstellen
+          self.attr_stack[target_level][key] = value
+
+          # Dem aktuellen Knoten auf dieser Ebene das Attribut nachträglich einimpfen
+          current_path = '/' + '/'.join(self.node_stack[:depth])
+          if current_path in self.node_lookup:
+            self.node_lookup[current_path]['attributes'][key] = value
+
+    return self.nodes
 
 
-def parse_slap(slap_data: str) -> List[Dict[str, Any]]:
-    parser = SLAPParser()
-    return parser.parse(slap_data)
-
-
-if __name__ == "__main__":
-    test_slap_input = """
+if __name__ == '__main__':
+  test_slap_input = """
     -alpha
-    .status:active
-    .mode:strict
-    --beta
+    .Adjektiv1:true
+    .Adjektiv2:true
+    --betta
     --gamma
-    ..role:worker
-    -delta
-    .status:idle
-    --epsilon
+    .Adjektiv3:true
+    --delta
     """
-
+  parser = SLAPParser()
+  print(json.dumps(parser.parse(test_slap_input), indent=2))
     parsed_result = parse_slap(test_slap_input)
     print(json.dumps(parsed_result, indent=2))
