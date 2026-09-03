@@ -11,9 +11,8 @@ class SLAPParser:
 
   def __init__(self):
     self.node_stack: List[str] = []
-    self.attr_stack: List[Dict[str, str]] = []
-    # Fast path-indexed lookup to mutate owner nodes retroactively
-    self.node_lookup: Dict[str, Dict[str, Any]] = {}
+    # Scope stack tracking active attributes per depth level (Index 0 = Depth 1)
+    self.scope_attrs: List[Dict[str, str]] = []
     self.nodes: List[Dict[str, Any]] = []
 
   def _count_prefix(self, line: str, char: str) -> int:
@@ -42,9 +41,8 @@ class SLAPParser:
 
   def parse(self, text: str) -> List[Dict[str, Any]]:
     self.node_stack = []
-    self.attr_stack = []
+    self.scope_attrs = []
     self.nodes = []
-    self.node_lookup = {}
 
     lines = text.splitlines()
 
@@ -56,22 +54,21 @@ class SLAPParser:
       token_type, depth, payload = token
 
       if token_type == "node":
-        # Unwind the stack to match the target depth of this node
+        # Unwind the stack to match or exceed the incoming node depth
         while len(self.node_stack) >= depth:
           self.node_stack.pop()
-          self.attr_stack.pop()
+          self.scope_attrs.pop()
 
         self.node_stack.append(payload)
 
-        # 1. Inherit all currently active attributes from ancestor scopes (0 to depth-1)
+        # Inherit all active attributes from ancestor scopes (0 to depth-1)
         inherited_attrs: Dict[str, str] = {}
-        for level_attrs in self.attr_stack:
-          inherited_attrs.update(level_attrs)
+        for level in self.scope_attrs:
+          inherited_attrs.update(level)
 
-        # 2. Allocate an attribute scope for this current level
-        self.attr_stack.append({})
+        # Allocate a dedicated attribute scope for this new node
+        self.scope_attrs.append({})
 
-        # Construct canonical hierarchical paths
         current_path = "/" + "/".join(self.node_stack)
         parent_path = (
             "/" + "/".join(self.node_stack[:-1])
@@ -87,7 +84,6 @@ class SLAPParser:
             "attributes": inherited_attrs,
         }
         self.nodes.append(node_record)
-        self.node_lookup[current_path] = node_record
 
       elif token_type == "attr":
         if ":" not in payload:
@@ -95,21 +91,17 @@ class SLAPParser:
         key, value = payload.split(":", 1)
         key, value = key.strip(), value.strip()
 
+        # Target level derived from prefix dot count (depth 1 '.' -> Scope index 0)
         target_level = depth - 1
 
-        # Unwind deeper closed sibling branches back to this attribute's level
-        while len(self.node_stack) > depth:
-          self.node_stack.pop()
-          self.attr_stack.pop()
+        if 0 <= target_level < len(self.scope_attrs):
+          # 1. Arm the attribute for all subsequent sibling and child nodes in this scope
+          self.scope_attrs[target_level][key] = value
 
-        if 0 <= target_level < len(self.attr_stack):
-          # Arm the attribute for subsequent nodes at or below this depth
-          self.attr_stack[target_level][key] = value
-
-          # Apply the attribute retroactively to the owner node at this depth
-          current_path = "/" + "/".join(self.node_stack[:depth])
-          if current_path in self.node_lookup:
-            self.node_lookup[current_path]["attributes"][key] = value
+          # 2. Attach directly to the immediate prior node ONLY if it matches this exact depth
+          # Prior sibling branches remain immutable
+          if self.nodes and self.nodes[-1]["depth"] == depth:
+            self.nodes[-1]["attributes"][key] = value
 
     return self.nodes
 
@@ -128,6 +120,7 @@ if __name__ == "__main__":
     --gamma
     .Adjektiv3:true
     --delta
+    -omega
     """
   print(json.dumps(parse_slap(test_slap_input), indent=2))
   
