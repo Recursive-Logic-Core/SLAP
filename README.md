@@ -67,7 +67,6 @@ Modern data serialization formats (JSON, YAML, XML) carry massive historical bal
   "cluster_alpha": {
     "zone": "eu_central",
     "security": "strict",
-    "maintenance": "true",
     "nodes": [
       { 
         "id": "node_01", 
