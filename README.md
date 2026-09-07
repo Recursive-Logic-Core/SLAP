@@ -13,6 +13,9 @@
 
 </div>
 
+> **Deterministic Protocol Specification**  
+> Designed and specified by Architect M.M.M. Python code provided as a reference implementation artifact.
+
 ---
 
 ## Abstract
