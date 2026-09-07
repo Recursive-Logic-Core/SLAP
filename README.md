@@ -122,4 +122,7 @@ for node in nodes:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Developed as part of the **Recursive-Logic-Core** architecture framework.
+
+## Contact & Architecture Core
+Developed and maintained by **Architect M.M.M.**  
+Direct contact: `arch_mmm@proton.me`
