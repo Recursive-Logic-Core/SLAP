@@ -15,7 +15,7 @@
 
 > **Deterministic Protocol Specification**  
 > Designed and specified by Architect M.M.M. Python code provided as a reference implementation artifact.
-
+>
 > **Operational Boundary:**  
 > SLAP is a universal, bidirectional runtime and serialization protocol designed for zero-overhead data transmission, tree-state management, and edge execution. It is not intended to displace persistent storage engines (such as SQL or document stores), but operates dynamically at the compute and network boundary—transforming heavyweight payloads into deterministic, bracket-free streams and vice versa without disrupting existing backend infrastructure.
 
