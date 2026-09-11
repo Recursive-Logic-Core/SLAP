@@ -15,6 +15,7 @@
 
 > **Deterministic Protocol Specification**  
 > Designed and specified by Architect M.M.M. Python code provided as a reference implementation artifact.
+> **Operational Boundary:** SLAP is not designed to replace system-of-record storage (SQL, JSON, document stores). It functions strictly as an ephemeral, in-memory context serialization layer at the LLM runtime boundary, transforming heavyweight payloads into zero-overhead stream tokens for ingestion.
 
 ---
 
@@ -31,7 +32,8 @@ Modern data serialization formats (JSON, YAML, XML) carry massive historical bal
 1. **Zero Syntax Overhead:** Only semantic data and explicit prefix markers exist. Whitespace within identifiers is strictly prohibited (use `_`).
 2. **Deterministic Single-Pass Parsing (**O(N)**):** Evaluated strictly line-by-line using a lightweight state machine. No lookaheads, no backtrack buffers, no bracket-balancing.
 3. **Cascading State Inheritance & Dynamic Scope:** Attributes defined at depth $N$ attach to the active node at that depth and automatically cascade down into all subsequent child nodes declared *after* them. Prior siblings remain immutable.
-4. **Visual Depth Indexing:** Structural hierarchy is declared at index `0` of each line. 
+4. **Visual Depth Indexing:** Structural hierarchy is declared at index `0` of each line.
+5. **Zero System Refactoring (Drop-in In-Memory Layer):** Existing enterprise pipelines remain 100% standard (JSON/SQL). SLAP operates solely as a micro-serialization gateway prior to model ingestion, eliminating token bloat without requiring changes to persistence architecture.
 
 ---
 
