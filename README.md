@@ -5,7 +5,7 @@
 # SLAP
 ### Structural Line Algorithm Path
 
-**Deterministic, zero-overhead context serialization and tree-state protocol.**
+**Deterministic, low-token context serialization and tree-state protocol.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Format: SLAP](https://img.shields.io/badge/Protocol-SLAP--1.0-brightgreen.svg)]()
@@ -14,28 +14,42 @@
 </div>
 
 > **Deterministic Protocol Specification**  
-> Designed and specified by Architect M.M.M. Python code provided as a reference implementation artifact.
+> Designed and specified by Architect M.M.M. Python code provided as a standalone reference implementation artifact.
 >
-> **Operational Boundary:**  
-> SLAP is a universal, bidirectional runtime and serialization protocol designed for zero-overhead data transmission, tree-state management, and edge execution. It is not intended to displace persistent storage engines (such as SQL or document stores), but operates dynamically at the compute and network boundary - transforming heavyweight payloads into deterministic, bracket-free streams and vice versa without disrupting existing backend infrastructure.
+> **Operational Scope: Where SLAP Operates**  
+> **SLAP is not a persistent storage engine or a replacement for binary transport protocols (such as Protocol Buffers or CBOR).**  
+> It operates as an ephemeral, text-based micro-serialization gateway directly at the **compute and ingestion boundary of Large Language Models**. It transforms heavyweight, bracket-laden payloads into deterministic, token-efficient streams prior to inference without requiring any alterations to existing backend infrastructure (JSON/SQL).
 
 ---
 
 ## Abstract
 
-Modern data serialization formats (JSON, YAML, XML) carry massive historical ballast: redundant quotation marks, nested closing brackets, fragile indentation rules, and zero native support for state inheritance.
+Modern data serialization formats (JSON, YAML, XML) carry massive historical ballast: redundant quotation marks, nested closing brackets, fragile indentation rules, and zero native support for state inheritance. When injected into LLM context windows, this syntax overhead directly consumes valuable token budget and working memory.
 
-**SLAP (Structural Line Algorithm Path)** is an ultra-minimalist, line-deterministic protocol designed for pure efficiency. It maps hierarchical tree topologies and cascading context inheritance using single-character prefix vectors. No brackets, no commas, no syntax noise.
+**SLAP (Structural Line Algorithm Path)** is an ultra-minimalist, line-deterministic protocol designed for pure context efficiency. It maps hierarchical tree topologies and cascading context inheritance using single-character prefix vectors. No brackets, no commas, no syntax noise.
 
 ---
 
 ## Core Principles
 
-1. **Zero Syntax Overhead:** Only semantic data and explicit prefix markers exist. Whitespace within identifiers is strictly prohibited (use `_`).
-2. **Deterministic Single-Pass Parsing (**O(N)**):** Evaluated strictly line-by-line using a lightweight state machine. No lookaheads, no backtrack buffers, no bracket-balancing.
-3. **Cascading State Inheritance & Dynamic Scope:** Attributes defined at depth $N$ attach to the active node at that depth and automatically cascade down into all subsequent child nodes declared *after* them. Prior siblings remain immutable.
-4. **Visual Depth Indexing:** Structural hierarchy is declared at index `0` of each line.
-5. **Zero System Refactoring (Drop-in In-Memory Layer):** Existing enterprise pipelines remain 100% standard (JSON/SQL). SLAP operates solely as a micro-serialization gateway prior to model ingestion, eliminating token bloat without requiring changes to persistence architecture.
+1. **Zero Syntax Overhead:** Only semantic data and explicit prefix markers exist. Structural depth is declared strictly at index `0` of each line.
+2. **Deterministic Single-Pass Parsing ($O(N)$):** Evaluated strictly line-by-line using a lightweight finite-state machine. No lookaheads, no backtrack buffers, and no recursion overhead.
+3. **Cascading State Inheritance & Dynamic Scope:** Attributes defined at depth $N$ attach to the active node at that depth and automatically cascade down into all subsequent child nodes declared *after* them. Prior siblings remain unaffected.
+4. **Visual Depth Indexing & Strict Identifiers:** Eliminates ambiguous whitespace within identifiers (using `_`), making structural misalignment immediately visible.
+5. **Drop-in In-Memory Gateway:** Persistence layers remain standard (JSON/SQL). SLAP operates strictly in-memory prior to model ingestion to eliminate token bloat.
+
+---
+
+## Structural Determinism vs. JSON Fallibility
+
+Comparing prefix-based hierarchies to bracketed formats often introduces false equivalencies regarding syntax errors. In practice, SLAP enforces significantly higher structural visibility and a lower error surface area than JSON:
+
+* **Elimination of Invisible Structural Drift:**  
+  In JSON, a misplaced closing bracket `}` silently shifts an entire branch into an incorrect parent scope while remaining 100% syntactically valid. The parser accepts it, introducing silent logical corruption that is difficult to locate across large files. In SLAP, depth is declared explicitly at index `0` of each line (`-`, `--`, `---`). Hierarchy is visually auditable at a glance.
+* **Strict Whitespace Boundaries:**  
+  By disallowing ambiguous whitespace within identifiers, malformed tokens and indentation slips stand out immediately. There are no trailing-comma syntax aborts, no unescaped quote errors, and no dangling delimiter states.
+* **Symmetrical Structural Responsibility:**  
+  No serialization format can correct an author who misunderstands their own data hierarchy. If an element is declared under the wrong parent node, both JSON and SLAP will faithfully parse that incorrect relationship. However, SLAP guarantees that this hierarchy is transmitted with **zero bracket-closure failure vectors** and **minimal token overhead** during automated state transitions.
 
 ---
 
@@ -44,6 +58,7 @@ Modern data serialization formats (JSON, YAML, XML) carry massive historical bal
 ### 1. Entities & Objects (`-`, `--`, `---`)
 * `-` declares a root entity (resets previous context).
 * Each additional `-` increases the hierarchical depth level ($N+1$).
+* Node identifiers use underscores for separation (`cluster_alpha`, `node_01`).
 
 ### 2. Attributes & States (`.`, `..`, `...`)
 * Prefix count corresponds to the target hierarchical depth level:
@@ -56,7 +71,7 @@ Modern data serialization formats (JSON, YAML, XML) carry massive historical bal
 
 ## Protocol Comparison
 
-### SLAP Representation
+### SLAP Representation (In-Memory Prompt Stream)
 ```text
 -cluster_alpha
 .zone:eu_central
