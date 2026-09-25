@@ -34,7 +34,7 @@ Modern data serialization formats (JSON, YAML, XML) carry massive historical bal
 
 1. **Zero Syntax Overhead:** Only semantic data and explicit prefix markers exist. Structural depth is declared strictly at index `0` of each line.
 2. **Deterministic Single-Pass Parsing ($O(N)$):** Evaluated strictly line-by-line using a lightweight finite-state machine. No lookaheads, no backtrack buffers, and no recursion overhead.
-3. **Cascading State Inheritance & Dynamic Scope:** Attributes defined at depth $N$ attach to the active node at that depth and automatically cascade down into all subsequent child nodes declared *after* them. Prior siblings remain unaffected.
+3. **Cascading State Inheritance & Dynamic Scope:** Attributes defined at depth $N$ arm the state register strictly forward for all subsequent child nodes and sub-branches declared after them. Prior siblings remain completely immutable.
 4. **Visual Depth Indexing & Strict Identifiers:** Eliminates ambiguous whitespace within identifiers (using `_`), making structural misalignment immediately visible.
 5. **Drop-in In-Memory Gateway:** Persistence layers remain standard (JSON/SQL). SLAP operates strictly in-memory prior to model ingestion to eliminate token bloat.
 
