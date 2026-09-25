@@ -97,9 +97,9 @@ SLAP deliberately rejects syntax bloat for exotic edge cases, adhering strictly 
 .zone:eu_central
 .security:strict
 --node_01
---node_02
 ..role:backup
-.maintenance:true
+--node_02
+..maintenance:true
 --node_03
 ```
 
@@ -147,9 +147,9 @@ raw_slap_data = """
 -alpha
 .status:active
 --beta
---gamma
 ..role:worker
-.maintenance:true
+--gamma
+..maintenance:true
 --delta
 """
 
