@@ -85,7 +85,7 @@ SLAP deliberately rejects syntax bloat for exotic edge cases, adhering strictly 
   In scenarios where strict state isolation requires breaking a shared cascade, authors simply introduce an explicit intermediate node or repeat an attribute. Even when intentionally redundant, SLAP's character payload and token density remain vastly superior to equivalent multi-level JSON/YAML envelopes.
 
 * **Invariant Parser Contract:**  
-  The reference engine (`SLAP.py`) evaluates strictly line-by-line in a single pass ($O(N)$). It requires zero lookahead buffers and does not negotiate data validity. Whether a tree is hyper-compressed or structurally explicit, the parsing behavior remains entirely deterministic.
+  The reference engine (`SLAP.py`) evaluates strictly line-by-line in a single pass (O(N)). It requires zero lookahead buffers and does not negotiate data validity. Whether a tree is hyper-compressed or structurally explicit, the parsing behavior remains entirely deterministic.
 
 ---
 
