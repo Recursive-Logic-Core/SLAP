@@ -1,6 +1,6 @@
 """SLAP Reference Parser (Structural Line Algorithm Path)
 
-Deterministic, causal linear state & context deserialization.
+Deterministic, causal tree-state deserialization.
 """
 
 import json
@@ -14,6 +14,7 @@ class SLAPParser:
         # Multi-level state register: Index 0 = Depth 1 ('.'), Index 1 = Depth 2 ('..'), etc.
         self.scope_attrs: List[Dict[str, str]] = []
         self.nodes: List[Dict[str, Any]] = []
+        self._last_was_node = False
 
     def _count_prefix(self, line: str, char: str) -> int:
         count = 0
@@ -43,6 +44,7 @@ class SLAPParser:
         self.node_stack = []
         self.scope_attrs = []
         self.nodes = []
+        self._last_was_node = False
 
         lines = text.splitlines()
 
@@ -57,17 +59,15 @@ class SLAPParser:
                 # 1. Unwind stack to match incoming depth
                 while len(self.node_stack) >= depth:
                     self.node_stack.pop()
-                    self.scope_attrs.pop()
+                    if len(self.scope_attrs) > len(self.node_stack):
+                        self.scope_attrs.pop()
 
                 self.node_stack.append(payload)
 
-                # 2. Additive Stacking: Inherit all active attributes from levels 0 to depth-1
+                # 2. Inherit all active attributes up to this node's level
                 inherited_attrs: Dict[str, str] = {}
-                for level_register in self.scope_attrs:
+                for level_register in self.scope_attrs[:depth]:
                     inherited_attrs.update(level_register)
-
-                # 3. Allocate a fresh, isolated attribute register for this new node level
-                self.scope_attrs.append({})
 
                 current_path = "/" + "/".join(self.node_stack)
                 parent_path = (
@@ -76,7 +76,7 @@ class SLAPParser:
                     else None
                 )
 
-                # 4. Freeze immutable node record with current inherited state
+                # 3. Create immutable node record with current inherited state
                 node_record = {
                     "id": payload,
                     "depth": depth,
@@ -85,21 +85,28 @@ class SLAPParser:
                     "attributes": inherited_attrs,
                 }
                 self.nodes.append(node_record)
+                self._last_was_node = True
 
             elif token_type == "attr":
                 if ":" not in payload:
                     continue
-                # Split strictly on first colon (colon-handling rule)
+                
+                # Split strictly on the first colon
                 key, value = payload.split(":", 1)
                 key, value = key.strip(), value.strip()
 
                 target_level = depth - 1
 
-                # If an attribute is declared before its node depth exists, extend registers
+                # If nodes intervened, declare a new scope: wipe target level and all deeper registers
+                if self._last_was_node:
+                    self.scope_attrs = self.scope_attrs[:target_level]
+                    self._last_was_node = False
+
+                # Ensure registers exist up to target_level
                 while len(self.scope_attrs) <= target_level:
                     self.scope_attrs.append({})
 
-                # Arm the register strictly forward for subsequent children/siblings
+                # Assign attribute to its target level register
                 self.scope_attrs[target_level][key] = value
 
         return self.nodes
@@ -115,11 +122,11 @@ if __name__ == "__main__":
     .A:true
     --a
     --b
+    ..B:true
+    ---c
     .B:true
     --d
     --e
-    .C:true
-    --c
     """
     print(json.dumps(parse_slap(test_slap_input), indent=2))
   
