@@ -61,10 +61,11 @@ Comparing prefix-based hierarchies to bracketed formats often introduces false e
 * Node identifiers use underscores for separation (`cluster_alpha`, `node_01`).
 
 ### 2. Attributes & States (`.`, `..`, `...`)
-* **Prefix Depth Binding:** The dot count strictly targets that specific hierarchical register (`.` = Depth 1, `..` = Depth 2).
-* **Strictly Forward Scope:** Attributes apply strictly to nodes declared after them. Prior nodes remain unaffected.
-* **Scope Isolation & Transition:** Declaring a new attribute at depth $N$ resets/replaces the previous active attribute set at that depth level. To combine states, either declare an explicit compound set at that level or nest via deeper levels (`..`).
-* **Key-Value Splitting:** Delimited strictly by the first colon (`:`).
+* **Prefix Depth Binding:** The dot count strictly targets that specific hierarchical scope (`.` = Depth 1, `..` = Depth 2, etc.).
+* **Strict Forward Causality:** Attributes apply strictly to nodes declared downstream of their declaration. Prior sibling nodes remain completely immutable.
+* **Scope Isolation & Transition:** Declaring a new attribute block at depth $N$ resets the active attribute register at that level. Sub-nodes inherit strictly the currently active state block, preventing accidental data bleed across disjoint sets.
+* **Compound & Intersection Mapping:** Elements requiring intersecting states (A \cap B) must either be declared under an explicit compound attribute scope (e.g., `.C` representing both traits) or via hierarchical sub-cascading using deeper levels (`..`).
+* **Key-Value Splitting:** Evaluated strictly on the first occurrence of `:`.
 
 ### 3. Delimiters, Scoping & Parser Contracts
 * **Key-Value Splitting:** Parsers evaluate key-value pairs strictly on the first occurrence of `:`. Subsequent colons are preserved as literal string content, natively supporting timestamps, URLs, and encoded values without escape characters.
