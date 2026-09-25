@@ -61,11 +61,10 @@ Comparing prefix-based hierarchies to bracketed formats often introduces false e
 * Node identifiers use underscores for separation (`cluster_alpha`, `node_01`).
 
 ### 2. Attributes & States (`.`, `..`, `...`)
-* Prefix count corresponds to the target hierarchical depth level:
-  * `.` binds to the active root node (depth 1) and cascades to all following descendants.
-  * `..` binds to the active depth-2 sub-node and cascades to its subsequent children.
-* **Lexical Downstream Flow:** Attributes apply dynamically to their parent scope and downstream siblings/children instantiated *after* the attribute declaration.
-* Key-value pairs are delimited by a single colon (`:`).
+* **Prefix Depth Binding:** The dot count strictly targets that specific hierarchical register (`.` = Depth 1, `..` = Depth 2).
+* **Strictly Forward Causality:** Attributes are never retroactive. They arm the state register strictly for elements instantiated **after** the declaration. Prior sibling nodes remain completely immutable.
+* **Additive Stacking (Layering):** New attributes declared at depth $N$ stack additively on top of existing attributes at that level. They do not flush other registers; only duplicate keys are updated.
+* **Key-Value Splitting:** Delimited by the first colon (`:`).
 
 ### 3. Delimiters, Scoping & Parser Contracts
 * **Key-Value Splitting:** Parsers evaluate key-value pairs strictly on the first occurrence of `:`. Subsequent colons are preserved as literal string content, natively supporting timestamps, URLs, and encoded values without escape characters.
