@@ -67,6 +67,26 @@ Comparing prefix-based hierarchies to bracketed formats often introduces false e
 * **Lexical Downstream Flow:** Attributes apply dynamically to their parent scope and downstream siblings/children instantiated *after* the attribute declaration.
 * Key-value pairs are delimited by a single colon (`:`).
 
+### 3. Delimiters, Scoping & Parser Contracts
+* **Key-Value Splitting:** Parsers evaluate key-value pairs strictly on the first occurrence of `:`. Subsequent colons are preserved as literal string content, natively supporting timestamps, URLs, and encoded values without escape characters.
+* **Discrete State Isolation (Interleaving Stacks):** Attribute registers are level-isolated. Declaring a depth-1 attribute (`.`) updates only the root-level register; it cascades to subsequent downstream nodes without prematurely clearing active deeper registers (`..`) until an explicit structural node transition occurs.
+* **Execution-Order Invariant:** SLAP is an execution-ordered stream, not an unordered associative map. Line order carries semantic causality and is an intentional architectural invariant.
+
+---
+
+## Orthogonal Simplicity & Edge-Case Topologies
+
+SLAP deliberately rejects syntax bloat for exotic edge cases, adhering strictly to single-character prefixes and downstream causality:
+
+* **No Specialized Syntax for Corner Cases:**  
+  Complex, disjoint, or non-linear state requirements do not require new syntax operators. They are mapped using the existing primitives (`-`, `.`) through deliberate structural explicitness (e.g., branch isolation or localized redeclaration).
+  
+* **Graceful Structural Redundancy:**  
+  In scenarios where strict state isolation requires breaking a shared cascade, authors simply introduce an explicit intermediate node or repeat an attribute. Even when intentionally redundant, SLAP's character payload and token density remain vastly superior to equivalent multi-level JSON/YAML envelopes.
+
+* **Invariant Parser Contract:**  
+  The reference engine (`SLAP.py`) evaluates strictly line-by-line in a single pass ($O(N)$). It requires zero lookahead buffers and does not negotiate data validity. Whether a tree is hyper-compressed or structurally explicit, the parsing behavior remains entirely deterministic.
+
 ---
 
 ## Protocol Comparison
