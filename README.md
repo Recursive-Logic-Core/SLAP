@@ -69,7 +69,7 @@ Comparing prefix-based hierarchies to bracketed formats often introduces false e
 
 ### 3. Delimiters, Scoping & Parser Contracts
 * **Key-Value Splitting:** Parsers evaluate key-value pairs strictly on the first occurrence of `:`. Subsequent colons are preserved as literal string content, natively supporting timestamps, URLs, and encoded values without escape characters.
-* **Discrete State Isolation (Scope Resets):** Attribute registers are level-isolated. When a new attribute block is declared at depth $N$, the register for that depth is cleanly replaced rather than accumulated. Deeper registers are managed through explicit hierarchical depth (`..`), ensuring clean mathematical boundaries between adjacent sibling groups.
+* **Discrete State Isolation (Scope Resets):** Attribute registers are level-isolated. When a new attribute block appears at depth $N$ after node declarations, all registers from depth $N$ downwards are cleanly flushed. State combinations are achieved through hierarchical depth specialization, guaranteeing strict single-parent lineage and O(N) deterministic evaluation.
 * **Execution-Order Invariant:** SLAP is an execution-ordered stream, not an unordered associative map. Line order carries semantic causality and is an intentional architectural invariant.
 
 ---
