@@ -61,10 +61,10 @@ Comparing prefix-based hierarchies to bracketed formats often introduces false e
 * Node identifiers use underscores for separation (`cluster_alpha`, `node_01`).
 
 ### 2. Attributes & States (`.`, `..`, `...`)
-* **Prefix Depth Binding:** The dot count strictly targets that specific hierarchical scope (`.` = Depth 1, `..` = Depth 2, etc.).
-* **Strict Forward Causality:** Attributes apply strictly to nodes declared downstream of their declaration. Prior sibling nodes remain completely immutable.
-* **Scope Isolation & Transition:** Declaring a new attribute block at depth $N$ resets the active attribute register at that level. Sub-nodes inherit strictly the currently active state block, preventing accidental data bleed across disjoint sets.
-* **Compound & Intersection Mapping:** Elements requiring intersecting states (A \cap B) must either be declared under an explicit compound attribute scope (e.g., `.C` representing both traits) or via hierarchical sub-cascading using deeper levels (`..`).
+* **Prefix Depth Binding:** The dot count strictly targets that specific hierarchical register (`.` = Depth 1, `..` = Depth 2, etc.).
+* **Strict Forward Causality:** Attributes apply exclusively to downstream nodes declared *after* the attribute statement. Prior siblings remain completely immutable.
+* **Scope Isolation & Transition:** Declaring an attribute block at depth $N$ resets the active register at depth $N$ and clears all deeper child registers. Sub-nodes inherit strictly the currently active scope stack, preventing data bleed across sibling sets.
+* **No Horizontal Conjunction (Intersection via Depth):** Two independent attribute sets cannot merge on the same depth level. To represent set intersections ($A \cap B$), downstream targets must nest via hierarchical sub-cascades (`..` under `.`), maintaining an uncorrupted tree topology.
 * **Key-Value Splitting:** Evaluated strictly on the first occurrence of `:`.
 
 ### 3. Delimiters, Scoping & Parser Contracts
