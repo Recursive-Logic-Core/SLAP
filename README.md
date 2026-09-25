@@ -62,9 +62,9 @@ Comparing prefix-based hierarchies to bracketed formats often introduces false e
 
 ### 2. Attributes & States (`.`, `..`, `...`)
 * **Prefix Depth Binding:** The dot count strictly targets that specific hierarchical register (`.` = Depth 1, `..` = Depth 2).
-* **Strictly Forward Causality:** Attributes are never retroactive. They arm the state register strictly for elements instantiated **after** the declaration. Prior sibling nodes remain completely immutable.
-* **Additive Stacking (Layering):** New attributes declared at depth $N$ stack additively on top of existing attributes at that level. They do not flush other registers; only duplicate keys are updated.
-* **Key-Value Splitting:** Delimited by the first colon (`:`).
+* **Strictly Forward Scope:** Attributes apply strictly to nodes declared after them. Prior nodes remain unaffected.
+* **Scope Isolation & Transition:** Declaring a new attribute at depth $N$ resets/replaces the previous active attribute set at that depth level. To combine states, either declare an explicit compound set at that level or nest via deeper levels (`..`).
+* **Key-Value Splitting:** Delimited strictly by the first colon (`:`).
 
 ### 3. Delimiters, Scoping & Parser Contracts
 * **Key-Value Splitting:** Parsers evaluate key-value pairs strictly on the first occurrence of `:`. Subsequent colons are preserved as literal string content, natively supporting timestamps, URLs, and encoded values without escape characters.
