@@ -1,10 +1,12 @@
 """SLAP Reference Parser (Structural Line Algorithm Path)
 
 Deterministic, causal tree-state deserialization.
+Reference implementation complying with strict forward causality
+and level-isolated scope resets.
 """
 
-import json
 from typing import Any, Dict, List, Optional, Tuple
+import json
 
 
 class SLAPParser:
@@ -56,7 +58,7 @@ class SLAPParser:
             token_type, depth, payload = token
 
             if token_type == "node":
-                # 1. Unwind stack to match incoming depth
+                # 1. Stack auf die Tiefe des Knotens abwickeln
                 while len(self.node_stack) >= depth:
                     self.node_stack.pop()
                     if len(self.scope_attrs) > len(self.node_stack):
@@ -64,7 +66,7 @@ class SLAPParser:
 
                 self.node_stack.append(payload)
 
-                # 2. Inherit all active attributes up to this node's level
+                # 2. Alle aktiven Attribute bis zur Tiefe dieses Knotens erben
                 inherited_attrs: Dict[str, str] = {}
                 for level_register in self.scope_attrs[:depth]:
                     inherited_attrs.update(level_register)
@@ -76,7 +78,7 @@ class SLAPParser:
                     else None
                 )
 
-                # 3. Create immutable node record with current inherited state
+                # 3. Unveränderlichen Knoten-Datensatz erzeugen
                 node_record = {
                     "id": payload,
                     "depth": depth,
@@ -90,23 +92,29 @@ class SLAPParser:
             elif token_type == "attr":
                 if ":" not in payload:
                     continue
-                
-                # Split strictly on the first colon
+
+                # Strikt am ersten Doppelpunkt trennen (für URLs, Zeitstempel etc.)
                 key, value = payload.split(":", 1)
                 key, value = key.strip(), value.strip()
 
-                target_level = depth - 1
+                target_level = depth - 1  # 0-basierter Index (. = 0, .. = 1)
 
-                # If nodes intervened, declare a new scope: wipe target level and all deeper registers
+                # REGEL 1: Wenn zuvor Knoten deklariert wurden, leeren wir die Ebene target_level
+                # und alle tieferen Ebenen komplett ab, um State-Bleed zu verhindern.
                 if self._last_was_node:
                     self.scope_attrs = self.scope_attrs[:target_level]
                     self._last_was_node = False
+                else:
+                    # REGEL 2: Auch wenn direkt Attribute aufeinander folgen,
+                    # schneidet ein Attribut auf Ebene N alle Register tiefer als N gnadenlos ab!
+                    if len(self.scope_attrs) > target_level + 1:
+                        self.scope_attrs = self.scope_attrs[:target_level + 1]
 
-                # Ensure registers exist up to target_level
+                # Sicherstellen, dass das Register bis target_level existiert
                 while len(self.scope_attrs) <= target_level:
                     self.scope_attrs.append({})
 
-                # Assign attribute to its target level register
+                # Attribut im Register der Zielebene eintragen
                 self.scope_attrs[target_level][key] = value
 
         return self.nodes
@@ -118,15 +126,15 @@ def parse_slap(slap_data: str) -> List[Dict[str, Any]]:
 
 
 if __name__ == "__main__":
-    test_slap_input = """
-    .A:true
-    --a
-    --b
-    ..B:true
-    ---c
-    .B:true
-    --d
-    --e
+    # Testfall exakt nach deiner Logik:
+    test_slap = """
+    .blaA_c:true
+    .blaA_d:true
+    --blaC
+    ..blaC_a:true
+    ..blaC_b:true
+    ---blaD
+    .blaA_f:true
     """
-    print(json.dumps(parse_slap(test_slap_input), indent=2))
-  
+    print(json.dumps(parse_slap(test_slap), indent=2))
+    
