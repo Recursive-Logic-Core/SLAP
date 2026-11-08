@@ -53,19 +53,19 @@ Comparing prefix-based hierarchies to bracketed formats often introduces false e
 
 ---
 
-## Syntax Specification
+### Syntax Specification
 
-### 1. Entities & Objects (`-`, `--`, `---`)
+#### 1. Entities & Objects (`-`, `--`, `---`)
 * `-` declares a root entity (resets previous context).
 * Each additional `-` increases the hierarchical depth level ($N+1$).
 * Node identifiers use underscores for separation (`cluster_alpha`, `node_01`).
 
-### 2. Attributes & States (`.`, `..`, `...`)
-* **Prefix Depth Binding:** The dot count strictly targets that specific hierarchical register (`.` = Depth 1, `..` = Depth 2, etc.).
-* **Strict Forward Causality:** Attributes apply exclusively to downstream nodes declared *after* the attribute statement. Prior siblings remain completely immutable.
-* **Scope Isolation & Transition:** Declaring an attribute block at depth $N$ resets the active register at depth $N$ and clears all deeper child registers. Sub-nodes inherit strictly the currently active scope stack, preventing data bleed across sibling sets.
-* **No Horizontal Conjunction (Intersection via Depth):** Two independent attribute sets cannot merge on the same depth level. To represent set intersections ($A \cap B$), downstream targets must nest via hierarchical sub-cascades (`..` under `.`), maintaining an uncorrupted tree topology.
-* **Key-Value Splitting:** Evaluated strictly on the first occurrence of `:`.
+#### 2. Attributes & States (`.`, `..`, `...`)
+* **Prefix Depth Binding & Dual Attachment:** The dot count strictly targets that specific hierarchical register (`.` = Depth 1, `..` = Depth 2, etc.). Attributes declared directly under a node attach to that active node at Depth $N$ **and** arm the state register for all subsequent child nodes ($N+1$).
+* **Strict Forward Causality:** Attributes apply exclusively to downstream nodes declared after the attribute statement. Prior siblings remain completely immutable.
+* **Scope Isolation & Transition:** Declaring a new attribute block at depth $N$ flushes the active register at depth $N$ and clears all deeper child registers. Sub-nodes inherit strictly the currently active scope stack, preventing data bleed across sibling branches.
+* **Explicit Register Reset (Empty States):** A bare dot line matching depth $N$ (e.g. `..`) flushes that depth and all deeper registers. It is the canonical operator to declare that a subsequent sibling carries zero own attributes after a predecessor that declared them.
+* **Key-Value Splitting:** Evaluated strictly on the first occurrence of `:`. Subsequent colons are preserved as literal string content, natively supporting timestamps, URLs, and encoded values without escape characters.
 
 ### 3. Delimiters, Scoping & Parser Contracts
 * **Key-Value Splitting:** Parsers evaluate key-value pairs strictly on the first occurrence of `:`. Subsequent colons are preserved as literal string content, natively supporting timestamps, URLs, and encoded values without escape characters.
