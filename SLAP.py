@@ -1,29 +1,52 @@
-"""SLAP Reference Parser (Structural Line Algorithm Path)
+"""SLAP (Structural Line Algorithm Path) Reference Parser
 
-Deterministic, causal tree-state deserialization.
-Fully aligned with SLAP Gateway v2.5 specifications.
+Deterministic, single-pass O(N) parser and tree reconstructor.
+Zero third-party dependencies.
 """
 
-from typing import Any, Dict, List, Optional, Set, Tuple
+from __future__ import annotations
+
 import json
+import re
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+SCALAR_KEY = "_"
+_INT = re.compile(r"^-?(0|[1-9]\d*)$")
+_FLOAT = re.compile(r"^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?$")
+
+
+def _coerce_scalar(text: str) -> Any:
+    """Type resolution for scalar values."""
+    if text == "true":
+        return True
+    if text == "false":
+        return False
+    if text == "null":
+        return None
+    if _INT.match(text):
+        return int(text)
+    if _FLOAT.match(text):
+        return float(text)
+    return text
 
 
 class SLAPParser:
+    """Deterministic, causal tree-state deserializer."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.node_stack: List[str] = []
         self.scope_attrs: List[Dict[str, str]] = []
         self.nodes: List[Dict[str, Any]] = []
-        self._last_was_node = False
+        self._last_was_node: bool = False
         self._block_levels: Set[int] = set()
 
-    def _count_prefix(self, line: str, char: str) -> int:
+    @staticmethod
+    def _count_prefix(line: str, char: str) -> int:
         count = 0
         for c in line:
-            if c == char:
-                count += 1
-            else:
+            if c != char:
                 break
+            count += 1
         return count
 
     def _parse_line(self, raw_line: str) -> Optional[Tuple[str, int, str]]:
@@ -35,22 +58,21 @@ class SLAPParser:
             depth = self._count_prefix(line, "-")
             return ("node", depth, line[depth:].strip())
 
-        elif line.startswith("."):
+        if line.startswith("."):
             depth = self._count_prefix(line, ".")
             return ("attr", depth, line[depth:].strip())
 
         return None
 
-    def parse(self, text: str) -> List[Dict[str, Any]]:
+    def parse_nodes(self, text: str) -> List[Dict[str, Any]]:
+        """Parses stream into a flat sequence of immutable node records."""
         self.node_stack = []
         self.scope_attrs = []
         self.nodes = []
         self._last_was_node = False
         self._block_levels = set()
 
-        lines = text.splitlines()
-
-        for raw_line in lines:
+        for raw_line in text.splitlines():
             token = self._parse_line(raw_line)
             if not token:
                 continue
@@ -58,14 +80,12 @@ class SLAPParser:
             token_type, depth, payload = token
 
             if token_type == "node":
-                # Wurzel-Knoten: Nur Register überleben, die unmittelbar davor deklariert wurden
                 if depth == 1:
                     self.scope_attrs = [
                         reg if i in self._block_levels else {}
                         for i, reg in enumerate(self.scope_attrs)
                     ]
 
-                # 1. Stack abwickeln
                 while len(self.node_stack) >= depth:
                     self.node_stack.pop()
                 if len(self.scope_attrs) > depth:
@@ -73,7 +93,6 @@ class SLAPParser:
 
                 self.node_stack.append(payload)
 
-                # 2. Vererbung bis zur Tiefe
                 inherited_attrs: Dict[str, str] = {}
                 for level_register in self.scope_attrs[:depth]:
                     inherited_attrs.update(level_register)
@@ -85,7 +104,6 @@ class SLAPParser:
                     else None
                 )
 
-                # 3. Knoten speichern
                 self.nodes.append({
                     "id": payload,
                     "depth": depth,
@@ -99,7 +117,7 @@ class SLAPParser:
             elif token_type == "attr":
                 target_level = depth - 1
 
-                # Gateway-Kompatibilität: Reiner Register-Reset (z.B. "..")
+                # Bare register reset (e.g. "..")
                 if payload == "":
                     self.scope_attrs = self.scope_attrs[:target_level]
                     self._last_was_node = False
@@ -126,6 +144,59 @@ class SLAPParser:
         return self.nodes
 
 
-def parse_slap(slap_data: str) -> List[Dict[str, Any]]:
-    return SLAPParser().parse(slap_data)
-    
+def nodes_to_tree(nodes: List[Dict[str, Any]], coerce: bool = True) -> Dict[str, Any]:
+    """Reconstructs nested dictionary and list hierarchies from node records."""
+    conv = _coerce_scalar if coerce else (lambda s: s)
+
+    roots: List[Dict[str, Any]] = []
+    stack: List[Dict[str, Any]] = []
+
+    for n in nodes:
+        rec = {"n": n, "kids": []}
+        while len(stack) >= n["depth"]:
+            stack.pop()
+        (stack[-1]["kids"] if stack else roots).append(rec)
+        stack.append(rec)
+
+    def build(rec: Dict[str, Any]) -> Any:
+        attrs, kids = rec["n"]["attributes"], rec["kids"]
+        if not kids and SCALAR_KEY in attrs:
+            return conv(attrs[SCALAR_KEY])
+        if kids and [k["n"]["id"] for k in kids] == [str(i) for i in range(len(kids))]:
+            return [build(k) for k in kids]
+        out = {k: conv(v) for k, v in attrs.items() if k != SCALAR_KEY}
+        for k in kids:
+            out[k["n"]["id"]] = build(k)
+        return out
+
+    return {r["n"]["id"]: build(r) for r in roots}
+
+
+def loads(slap_text: str, coerce: bool = True) -> Dict[str, Any]:
+    """Standard entry point: deserializes SLAP stream directly into a nested dict."""
+    nodes = SLAPParser().parse_nodes(slap_text)
+    return nodes_to_tree(nodes, coerce=coerce)
+
+
+def parse_nodes(slap_text: str) -> List[Dict[str, Any]]:
+    """Inspect low-level immutable node records."""
+    return SLAPParser().parse_nodes(slap_text)
+
+
+if __name__ == "__main__":
+    sample_stream = """
+    .version:1
+    -cluster
+    ..role:worker
+    ..active:true
+    --node_01
+    ..
+    --node_02
+    """
+
+    print("=== HIGH-LEVEL DICT (loads) ===")
+    print(json.dumps(loads(sample_stream), indent=2))
+
+    print("\n=== LOW-LEVEL NODES (parse_nodes) ===")
+    print(json.dumps(parse_nodes(sample_stream), indent=2))
+
