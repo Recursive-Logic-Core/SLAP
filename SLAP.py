@@ -65,7 +65,7 @@ class SLAPParser:
         return None
 
     def parse_nodes(self, text: str) -> List[Dict[str, Any]]:
-        """Parses stream into a flat sequence of node records."""
+        """Parses a SLAP stream into a flat sequence of immutable node records."""
         self.node_stack = []
         self.scope_attrs = []
         self.nodes = []
@@ -80,12 +80,14 @@ class SLAPParser:
             token_type, depth, payload = token
 
             if token_type == "node":
+                # Root boundary isolation: Only registers declared directly prior survive
                 if depth == 1:
                     self.scope_attrs = [
                         reg if i in self._block_levels else {}
                         for i, reg in enumerate(self.scope_attrs)
                     ]
 
+                # 1. Unwind stack down to node depth
                 while len(self.node_stack) >= depth:
                     self.node_stack.pop()
                 if len(self.scope_attrs) > depth:
@@ -93,6 +95,7 @@ class SLAPParser:
 
                 self.node_stack.append(payload)
 
+                # 2. Inherit active attributes up to current depth
                 inherited_attrs: Dict[str, str] = {}
                 for level_register in self.scope_attrs[:depth]:
                     inherited_attrs.update(level_register)
@@ -104,6 +107,7 @@ class SLAPParser:
                     else None
                 )
 
+                # 3. Commit immutable node record
                 self.nodes.append({
                     "id": payload,
                     "depth": depth,
@@ -129,6 +133,7 @@ class SLAPParser:
                 key, value = payload.split(":", 1)
                 key, value = key.strip(), value.strip()
 
+                # Flush deeper registers on scope transition
                 if self._last_was_node:
                     self.scope_attrs = self.scope_attrs[:target_level]
                     self._last_was_node = False
@@ -141,10 +146,13 @@ class SLAPParser:
                 self.scope_attrs[target_level][key] = value
                 self._block_levels.add(target_level)
 
-                # BEIDES GILT: Wenn direkt davor ein Knoten auf derselben Tiefe deklariert wurde,
-                # erhält dieser Knoten das Attribut ebenfalls als Eigenattribut!
-                if self.nodes and self.nodes[-1]["depth"] == depth:
-                    self.nodes[-1]["attributes"][key] = value
+                # Backward attribution: Target the active ancestor node on this exact depth
+                if len(self.node_stack) >= depth:
+                    target_path = "/" + "/".join(self.node_stack[:depth])
+                    for node in reversed(self.nodes):
+                        if node["path"] == target_path:
+                            node["attributes"][key] = value
+                            break
 
         return self.nodes
 
@@ -178,13 +186,13 @@ def nodes_to_tree(nodes: List[Dict[str, Any]], coerce: bool = True) -> Dict[str,
 
 
 def loads(slap_text: str, coerce: bool = True) -> Dict[str, Any]:
-    """Standard entry point: deserializes SLAP stream directly into a nested dict."""
+    """Standard entry point: Deserializes SLAP stream directly into a nested dict."""
     nodes = SLAPParser().parse_nodes(slap_text)
     return nodes_to_tree(nodes, coerce=coerce)
 
 
 def parse_nodes(slap_text: str) -> List[Dict[str, Any]]:
-    """Inspect low-level node records."""
+    """Low-level inspection of immutable node records."""
     return SLAPParser().parse_nodes(slap_text)
 
 
@@ -196,7 +204,7 @@ if __name__ == "__main__":
     --node_01
     ..role:backup
     --node_02
-    ..maintenance:true
+    .maintenance:true
     --node_03
     """
 
@@ -205,3 +213,4 @@ if __name__ == "__main__":
 
     print("\n=== LOW-LEVEL NODES (parse_nodes) ===")
     pprint(parse_nodes(stream))
+
