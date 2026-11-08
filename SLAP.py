@@ -6,7 +6,7 @@ Zero third-party dependencies.
 
 from __future__ import annotations
 
-import json
+from pprint import pprint
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -65,7 +65,7 @@ class SLAPParser:
         return None
 
     def parse_nodes(self, text: str) -> List[Dict[str, Any]]:
-        """Parses stream into a flat sequence of immutable node records."""
+        """Parses stream into a flat sequence of node records."""
         self.node_stack = []
         self.scope_attrs = []
         self.nodes = []
@@ -141,6 +141,11 @@ class SLAPParser:
                 self.scope_attrs[target_level][key] = value
                 self._block_levels.add(target_level)
 
+                # BEIDES GILT: Wenn direkt davor ein Knoten auf derselben Tiefe deklariert wurde,
+                # erhält dieser Knoten das Attribut ebenfalls als Eigenattribut!
+                if self.nodes and self.nodes[-1]["depth"] == depth:
+                    self.nodes[-1]["attributes"][key] = value
+
         return self.nodes
 
 
@@ -179,24 +184,24 @@ def loads(slap_text: str, coerce: bool = True) -> Dict[str, Any]:
 
 
 def parse_nodes(slap_text: str) -> List[Dict[str, Any]]:
-    """Inspect low-level immutable node records."""
+    """Inspect low-level node records."""
     return SLAPParser().parse_nodes(slap_text)
 
 
 if __name__ == "__main__":
-    sample_stream = """
-    .version:1
-    -cluster
-    ..role:worker
-    ..active:true
+    stream = """
+    -cluster_alpha
+    .zone:eu_central
+    .security:strict
     --node_01
-    ..
+    ..role:backup
     --node_02
+    ..maintenance:true
+    --node_03
     """
 
     print("=== HIGH-LEVEL DICT (loads) ===")
-    print(json.dumps(loads(sample_stream), indent=2))
+    pprint(loads(stream))
 
     print("\n=== LOW-LEVEL NODES (parse_nodes) ===")
-    print(json.dumps(parse_nodes(sample_stream), indent=2))
-
+    pprint(parse_nodes(stream))
