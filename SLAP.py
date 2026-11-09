@@ -146,14 +146,6 @@ class SLAPParser:
                 self.scope_attrs[target_level][key] = value
                 self._block_levels.add(target_level)
 
-                # Backward attribution: Target the active ancestor node on this exact depth
-                if len(self.node_stack) >= depth:
-                    target_path = "/" + "/".join(self.node_stack[:depth])
-                    for node in reversed(self.nodes):
-                        if node["path"] == target_path:
-                            node["attributes"][key] = value
-                            break
-
         return self.nodes
 
 
@@ -204,7 +196,7 @@ if __name__ == "__main__":
     --node_01
     ..role:backup
     --node_02
-    .maintenance:true
+    ..maintenance:true
     --node_03
     """
 
