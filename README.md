@@ -3,6 +3,25 @@
 ![SLAP Banner](SLAP.jpg)
 
 # SLAP
+
+### Installation
+Install via PyPI:
+
+```bash
+pip install slap-protocol
+```
+
+### Quickstart
+```python
+import slap
+
+# Encode JSON to SLAP
+slap_stream = slap.json_to_slap('{"cluster": {"node": 1}}')
+
+# Parse SLAP back to JSON
+json_data = slap.slap_to_json(slap_stream)
+```
+
 ### Structural Line Algorithm Path
 
 **Deterministic, low-token context serialization and tree-state protocol.**
