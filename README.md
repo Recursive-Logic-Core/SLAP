@@ -2,7 +2,7 @@
 
 ![SLAP Banner](SLAP.jpg)
 
-# SLAP
+# S.L.A.P.
 
 ### Installation
 Install via PyPI:
