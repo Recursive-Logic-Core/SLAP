@@ -151,7 +151,7 @@ SLAP deliberately rejects syntax bloat for exotic edge cases, adhering strictly 
 }
 ```
 
-*Result: SLAP reduces character payload by over 50% while completely removing bracket-closure failure vectors.*
+*Result: On the example above, SLAP reduces character payload by over 50%, completely removes bracket-closure failure vectors, and remains deterministically parseable in O(N) even when paths are declared redundantly.*
 
 ---
 
