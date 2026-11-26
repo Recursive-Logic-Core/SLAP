@@ -157,7 +157,7 @@ SLAP deliberately rejects syntax bloat for exotic edge cases, adhering strictly 
 
 ## Reference Implementation & Gateway
 
-The ecosystem provides two zero-dependency modules depending on integration requirements:
+For standalone / zero-install usage directly from the repository files (without installing via PyPI), the ecosystem provides two zero-dependency modules:
 
 ### 1. Standalone Core Parser (`SLAP.py`)
 A minimal, lightweight reference engine for direct node extraction and AST building:
